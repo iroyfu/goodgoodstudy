@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>今日功德累计</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      background: linear-gradient(to bottom, #dbe6e4, #fef9f4);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      position: relative;
+      z-index: 2;
+      width: 90%;
+      max-width: 500px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 70%;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      font-weight: 700;
+      color: #5d5d5d;
+      font-size: 28px;
+    }
+
+    .output {
+      font-size: 6vw;
+      font-weight: 700;
+      color: #4e837a;
+      padding: 20px;
+      background-color: #f0f8f7;
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-grow: 2;
+      margin-top: 20px;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .status {
+      margin-top: 15px;
+      font-size: 20px;
+      color: #888;
+    }
+
+    .rice-info {
+      margin-top: 10px;
+      font-size: 18px;
+      color: #666;
+    }
+
+    .form-container {
+      width: 100%;
+      margin-top: 20px;
+    }
+
+    input, button {
+      padding: 12px;
+      margin: 10px 0;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      outline: none;
+      transition: 0.3s;
+      width: 100%;
+    }
+
+    input:focus, button:hover {
+      border-color: #7abfbf;
+      box-shadow: 0 0 10px rgba(122, 191, 191, 0.5);
+    }
+
+    button {
+      background-color: #7abfbf;
+      color: white;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .popup {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.9);
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      z-index: 3;
+    }
+
+    .popup button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .popup button:hover {
+      background-color: #45a049;
+    }
+
+    .background {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('https://your-image-url-here.gif') no-repeat center center/cover;
+      opacity: 0.2;
+      z-index: 1;
+      animation: float 30s infinite alternate ease-in-out;
+    }
+
+    @keyframes float {
+      0% { background-position: center center; }
+      100% { background-position: center top; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="background"></div>
+
+<div class="container">
+  <div class="output" id="salaryEarned">0</div>
+  <div class="status" id="workStatus"></div>
+  <div class="rice-info" id="riceInfo">当前可购买的大米: 0 斤</div>
+
+  <div class="form-container">
+    <div>
+      <input type="number" id="monthlySalary" placeholder="月功德">
+      <input type="time" id="startTime" value="09:00">
+      <input type="time" id="endTime" value="18:00">
+      <br>
+      <button onclick="startCalculating()">开始计算</button>
+    </div>
+  </div>
+</div>
+
+<!-- 弹窗 -->
+<div class="popup" id="popup">
+  <h2>牛逼，又给老板赚了一辆车！</h2>
+  <button onclick="closePopup()">我继续加油！</button>
+</div>
+
+<script>
+  let timer;
+
+  function startCalculating() {
+    if (timer) clearInterval(timer);
+
+    const monthlySalary = parseFloat(document.getElementById('monthlySalary').value);
+    const startTimeStr = document.getElementById('startTime').value;
+    const endTimeStr = document.getElementById('endTime').value;
+
+    if (isNaN(monthlySalary) || !startTimeStr || !endTimeStr) {
+      alert('请填写完整信息');
+      return;
+    }
+
+    const [startHour, startMinute] = startTimeStr.split(':').map(Number);
+    const [endHour, endMinute] = endTimeStr.split(':').map(Number);
+
+    const workStart = new Date();
+    workStart.setHours(startHour, startMinute, 0, 0);
+
+    const workEnd = new Date();
+    workEnd.setHours(endHour, endMinute, 0, 0);
+
+    const totalWorkMilliseconds = workEnd - workStart;
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const workdays = getWorkdaysInMonth(year, month);
+
+    const dailySalary = monthlySalary / workdays;
+    const salaryPerMillisecond = dailySalary / totalWorkMilliseconds;
+
+    function updateSalary() {
+      const now = new Date();
+      const salaryEarnedElem = document.getElementById('salaryEarned');
+      const statusElem = document.getElementById('workStatus');
+      const riceInfoElem = document.getElementById('riceInfo');
+
+      let earned = 0;
+
+      if (now < workStart) {
+        salaryEarnedElem.innerText = "0 元";
+        statusElem.innerText = "未开始工作";
+      } else if (now > workEnd) {
+        earned = dailySalary;
+        salaryEarnedElem.innerText = `${earned.toFixed(2)} 元`;
+        statusElem.innerText = "今日工作已完成 🎉";
+      } else {
+        const workedMilliseconds = now - workStart;
+        earned = workedMilliseconds * salaryPerMillisecond;
+        salaryEarnedElem.innerText = `${earned.toFixed(2)} 元`;
+        statusElem.innerText = "努力中 🧘‍♂️ ...";
+      }
+
+      // Calculate rice (1斤大米 = 1.5元, 1公斤 = 3元)
+      const riceInKg = earned / 3;
+      const riceInJin = riceInKg * 2;
+      riceInfoElem.innerText = `当前购大米: ${riceInJin.toFixed(2)} 斤`;
+    }
+
+    updateSalary();
+    timer = setInterval(updateSalary, 1000);
+  }
+
+  function getWorkdaysInMonth(year, month) {
+    let count = 0;
+    const date = new Date(year, month, 1);
+    while (date.getMonth() === month) {
+      const day = date.getDay();
+      if (day !== 0 && day !== 6) {
+        count++;
+      }
+      date.setDate(date.getDate() + 1);
+    }
+    return count;
+  }
+
+  function closePopup() {
+    document.getElementById('popup').style.display = 'none';
+  }
+
+  function showPopup() {
+    document.getElementById('popup').style.display = 'block';
+    setTimeout(closePopup, 5000); // Popup will close after 5 seconds
+  }
+</script>
+
+</body>
+</html>
